@@ -1,0 +1,7 @@
+
+
+- use docopt instead of plac
+- separate commands into different files
+- remove code and add deps to kids.*
+- separate templates in a special dir.
+- store session info in /tmp and try to reuse it if possible

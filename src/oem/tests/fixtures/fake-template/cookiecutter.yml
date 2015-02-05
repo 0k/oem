@@ -1,0 +1,27 @@
+context:
+  name:
+    help: "Module name (ie: sale_trinkets)"
+    regex: '[a-zA-Z0-9_]+'
+  email:
+    help: "Author email (ie: john.doe@example.com)"
+    regex: '[a-zA-Z0-9_.]+@[a-zA-Z0-9_.-]+\.[a-zA-Z0-9_.-]+'
+  author:
+    help: "Author Name (ie: John Doe)"
+    regex: '.+'
+  website:
+    help: "Website (ie: http://www.yourwebsite.com)"
+    default:
+    regex: '[^ ]+'
+  description:
+    help: Short description of your module
+    default: "{{name}} OpenERP/Odoo module."
+  category:
+    help: "Module category (ie: Hidden, Tools, Website, ...)"
+    default: Tools
+  license_years:
+    help: "License Years (ie: 2015, or 2012-2014)"
+    regexp: '[0-9,- ]+'
+  version:
+    help: "Module Version (ie: 0.1)"
+    default: "0.1"
+

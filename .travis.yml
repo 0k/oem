@@ -1,0 +1,26 @@
+language: python
+python:
+  - "2.7"
+install:
+  - easy_install --version
+  - pip install setuptools==9.1   ## version 10 introduce a bug with d2to1
+  - pip install pip==1.5.6  ## some ``python setup.py`` black magic do not work with d2to1 and pip ``6.0.7``
+  - pip install coverage coveralls
+  - pip install -r requirements.txt
+  - python setup.py develop easy_install "$(./autogen.sh --get-name)[test]"  ## getting deps
+
+script:
+  - nosetests . && coveralls
+
+  - ## checking that we can actually create a dist THEN install this package as tar.gz, use and uninstall
+  - git reset --hard HEAD ; git clean -d -f ; python setup.py sdist --formats=gztar
+  - pip install "dist/$(./autogen.sh --get-name)-$(./autogen.sh --get-version | tr "_" "-").tar.gz"
+  - python -c "import $(./autogen.sh --get-name)" && pip uninstall -y "$(./autogen.sh --get-name)"
+
+  - ## checking that we can install from source, use and uninstall
+  - python setup.py install
+  - python -c "import $(./autogen.sh --get-name)" && pip uninstall -y "$(./autogen.sh --get-name)"
+
+  - ## checking pip installability, use and uninstall
+  - git reset --hard HEAD ; git clean -d -f ; git fetch --unshallow ; pip install git+file://$PWD
+  - python -c "import $(./autogen.sh --get-name)" && pip uninstall -y "$(./autogen.sh --get-name)"

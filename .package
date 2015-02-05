@@ -1,0 +1,6 @@
+NAME="oem"
+DESCRIPTION="OpenERP/Odoo command line helper for module maker and administrator."
+EMAIL="valentin.lab@kalysto.org"
+AUTHOR="Valentin Lab"
+AUTHOR_EMAIL="$AUTHOR <$EMAIL>"
+FILES="setup.cfg setup.py CHANGELOG.rst src/oem/oem.py"
