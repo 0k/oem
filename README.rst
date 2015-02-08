@@ -54,10 +54,15 @@ Installation
        pip install oem
 
 For now, because we use specific ``cookiecutter`` and ``ooop`` versions,
-you should install it from source::
+you should make sure you have the correct dependencies::
 
     pip install -r requirements.txt
+
+And then you can use directly the ``oem`` link, or install it locally::
+
     python setup.py install
+
+
 
 ..
    If you have downloaded the GIT sources, then you could add install
