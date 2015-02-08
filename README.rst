@@ -34,7 +34,8 @@ Features
 
 using ``oem``:
 
-- manage your XML data files easily by importing UI modifications.
+- ``oem init`` allows you to create skeletin of new project easily
+- ``oem rec import`` manage your XML data files easily by importing UI modifications.
 
 
 Compatibility
@@ -46,25 +47,32 @@ This code is python2 only for now.
 Installation
 ============
 
-You don't need to download the GIT version of the code as ``oem`` is
-available on the PyPI. So you should be able to run::
+..
+   You don't need to download the GIT version of the code as ``oem`` is
+   available on the PyPI. So you should be able to run::
 
-    pip install oem
+       pip install oem
 
-If you have downloaded the GIT sources, then you could add install
-the current version via traditional::
+For now, because we use specific ``cookiecutter`` and ``ooop`` versions,
+you should install it from source::
 
     pip install -r requirements.txt
     python setup.py install
 
-And if you don't have the GIT sources but would like to get the latest
-master or branch from github, you could also::
+..
+   If you have downloaded the GIT sources, then you could add install
+   the current version via traditional::
 
-    pip install git+https://github.com/0k/oem
 
-Or even select a specific revision (branch/tag/commit)::
+..
+   And if you don't have the GIT sources but would like to get the latest
+   master or branch from github, you could also::
 
-    pip install git+https://github.com/0k/oem@master
+       pip install git+https://github.com/0k/oem
+
+   Or even select a specific revision (branch/tag/commit)::
+
+       pip install git+https://github.com/0k/oem@master
 
 
 Usage
