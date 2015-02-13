@@ -4,7 +4,7 @@ import ooop
 
 from datetime import timedelta
 from sact.epoch import Time, TzLocal, UTC
-
+from kids.cache import cache
 
 OOOP_NAME_TAG_LIKE_EXPR = "{%s}%%"
 
@@ -119,6 +119,7 @@ class OOOPExtended(ooop.OOOP):
         """Return true if model exists in distant OOOP database"""
         return len(self.IrModel.filter(model=model)) != 0
 
+    @cache
     def get_model(self, model):
         """Return OOOP Model object specified in the openerp style model
 
@@ -126,6 +127,24 @@ class OOOPExtended(ooop.OOOP):
 
         """
         return getattr(self, ooop_normalize_model_name(model))
+
+    @cache
+    def get_fields(self, model):
+        """Return fields dict of current model"""
+
+        if model in self.fields.keys():
+            return self.fields[model]
+
+        odoo_fields = self.get_model(model).fields_get()
+        fields = {}
+        for field_name, field in odoo_fields.items():
+            field['name'] = field_name
+            field['relation'] = field.get('relation', False)
+            field['ttype'] = field['type']
+            del field['type']
+            fields[field_name] = field
+        self.fields[model] = fields
+        return fields
 
     def get_object(self, model, object_id):
         """Return OOOP Instance object using OpenERP model name
