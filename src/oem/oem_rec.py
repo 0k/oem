@@ -8,13 +8,16 @@ import os
 import os.path
 import sys
 import time
+import copy
+import collections
 
 from kids.cmd import cmd, msg
 from kids.data.lib import half_split_on_predicate
 from kids.data.graph import reorder, cycle_exists
-from kids.cache import cache
+from kids.cache import cache, hippie_hashing
 from kids.xml import xml2string, xmlize, load
 from kids.txt import udiff
+from kids.data import mdict
 
 
 from .ooop_utils import build_filters, ooop_normalize_model_name, obj2dct, xmlid2tuple, tuple2xmlid
@@ -25,7 +28,7 @@ from . import metadata
 from . import common
 from . import metadata
 from . import tmpl
-
+from .field_spec import parse_field_specs, is_field_selected
 
 STATUS_DELETED = object()
 STATUS_ADDED = object()
@@ -177,14 +180,10 @@ class Command(common.OemCommand):
         dct["xml_id"] = "" if xml_id is None else self.tuple2xmlid(xml_id)
         return dct
 
-    action_fields = ['name', 'type', 'res_model', 'view_id',
-                     'view_type', 'view_mode', 'target', 'usage',
-                     'domain', 'context']
-
     @cmd
     def import_(self, db, model,
                 name=None, since=None, tag=None,
-                fields=None, xmlid=None, id=None,
+                fields="", xmlid=None, id=None,
                 all=None,
                 label='%(_model)s_record',
                 fmt='%(id)5s %(name)-40s %(xml_id)-40s',
@@ -228,11 +227,6 @@ class Command(common.OemCommand):
         """
 
         self.initialize(db=db, load_models=True)
-
-        fields = [] if not fields else fields.split(',')
-        ## Should be able to set this in config file.
-        fields = set(fields) - \
-                 set("create_uid,write_uid,create_date,write_date".split(","))
 
         if not self.o.model_exists(model):
             raise ValueError("Model %r not found." % (model,))
@@ -279,8 +273,9 @@ class Command(common.OemCommand):
 
                 l = exact_matches
 
-        self._record_import(l, label, fields, tag,
-                            follow_o2m=not exclude_o2m)
+        self.field_cli_specs = parse_field_specs(fields, model)
+
+        self._record_import(l, label, tag, follow_o2m=not exclude_o2m)
 
     def _get_file_name_for_record(self, ooop_record, import_data,
                                   label="%(_model)s_record"):
@@ -290,8 +285,7 @@ class Command(common.OemCommand):
         f = label % dct
         return "%s.xml" % common.file_normalize_model_name(f)
 
-    def _record_import(self, ooop_records, label, fields, tag,
-                       follow_o2m=True):
+    def _record_import(self, ooop_records, label, tag, follow_o2m=True):
 
         content = []
         for ooop_record in ooop_records:
@@ -300,8 +294,8 @@ class Command(common.OemCommand):
                    ("(name=%r)" % ooop_record.name)
                    if 'name' in ooop_record.fields else ''))
 
-            content += self.to_xml([ooop_record], fields,
-                                   follow_o2m=follow_o2m, tag=tag)
+            content += self.to_xml(
+                [ooop_record], follow_o2m=follow_o2m, tag=tag)
 
         ## This should be done directly in arch field in mako template
         # content = [(r, re.sub(r'\bx_([a-zA-Z_]+)\b', r'\1', c))
@@ -355,8 +349,7 @@ class Command(common.OemCommand):
         for r in records_written:
             self._trigger_event(r, 'write')
 
-    def menu_to_xml(self, menu, xml_id, fields=None,
-                    follow_o2m=False, tags=False):
+    def menu_to_xml(self, menu, xml_id, follow_o2m=False, tags=False):
         content = []
         action = None
         action_xml_id = None
@@ -370,7 +363,6 @@ class Command(common.OemCommand):
                 ## we'll then try to import action also
                 content.extend(self.to_xml(
                     [action],
-                    fields=self.action_fields,
                     follow_o2m=True))
                 lookup_action = self.xml_id_mgr.lookup(action._model,
                                                        action._ref)
@@ -402,8 +394,7 @@ class Command(common.OemCommand):
                 if lookup_xml_id is None:
                     ## we'll then try to import this menu also
                     content.extend(self.to_xml(
-                        [g], fields=[f[0] for f in fields],
-                        follow_o2m=True, tag=tags))
+                        [g], follow_o2m=True, tag=tags))
                     lookup_xml_id = self.xml_id_mgr.lookup(g._model, g._ref)
                     assert lookup_xml_id is not None
                 deps.append(lookup_xml_id)
@@ -424,7 +415,44 @@ class Command(common.OemCommand):
              deps))
         return content
 
-    def to_xml(self, records, fields=None, follow_o2m=False, tag=False):
+    @cache
+    @property
+    def field_specs(self):
+        """Return current field specs"""
+
+        spec = copy.deepcopy(self.field_cli_specs or {})
+
+        cfg_spec = mdict.mdict(self.cfg).get("rec.import.fields", {})
+        cfg_spec = ";".join("%s:%s" % (m, fs) for m, fs in cfg_spec.dct.items())
+        spec.update(parse_field_specs(cfg_spec))
+        return spec
+
+    @cache
+    def get_fields_for_model(self, model):
+        """Return list of fields to import"""
+
+        fields = [f for f in self.o.get_fields(model)
+                  if is_field_selected(model, f, self.field_specs)]
+
+        ## order
+
+        mcfg = mdict.mdict(self.cfg)
+        default_rank_cfg = mcfg.get("rec.import.order.*", 'name,sequence')
+        rank = mcfg.get("rec.import.order.%s" % model, default_rank_cfg)
+        ## force 'name', then 'sequence' to be first field displayed...
+        order_rank = dict((label, i)
+                          for i, label in enumerate(rank.split(',')))
+        fields.sort(key=lambda x: order_rank.get(x[0], x[0]))
+        return fields
+
+    @cache
+    def get_fields_def_for_model(self, model):
+        """Return list of fields to import"""
+        return collections.OrderedDict(
+            (k, v) for k, v in self.o.get_fields(model).items()
+            if k in self.get_fields_for_model(model))
+
+    def to_xml(self, records, follow_o2m=False, tag=False):
         content = []
         objs = [(record, record._model, getattr(record, 'name', 'anonymous'))
                 for record in records]
@@ -432,11 +460,7 @@ class Command(common.OemCommand):
             (r, model, identifier), objs = objs[0], objs[1:]
 
             exported_fields = list((k, v) for k, v in r.fields.iteritems()
-                                   if not fields or k in fields)
-
-            ## force 'name', then 'sequence' to be first field displayed...
-            order_rank = {"name": 0, "sequence": 1}
-            exported_fields.sort(key=lambda x: order_rank.get(x[0], x[0]))
+                                   if k in self.get_fields_for_model(model))
 
             ## XXXvlab: Warning, nothing is done to ensure uniqueness within
             ## the current XML. Hopefully, names will distinguish them out.
@@ -494,13 +518,10 @@ class Command(common.OemCommand):
             ## Generate XML for a record
             ##
 
-            if model == "ir.ui.menu":
-                content.extend(self.menu_to_xml(
-                    r, xml_id, exported_fields,
-                    follow_o2m=follow_o2m))
-            else:
-                content.extend(self.record_to_xml(
-                    r, xml_id, exported_fields, tag=tag))
+            content.extend(
+                self.record_to_xml(r, xml_id,
+                                   tag=tag, follow_o2m=follow_o2m))
+
             if follow_o2m:
                 ## Add all the one2many:
                 for f, fdef in exported_fields:
@@ -516,14 +537,25 @@ class Command(common.OemCommand):
                                  for obj in (with_xmlids + without_xmlids)]
         return content
 
-    def record_to_xml(self, record, xml_id, fields=None, tag=False):
-        return self._render_record_template(record, record._model, xml_id, fields=fields)
 
-    def _render_record_template(self, r, model, xml_id, fields=None):
+    def record_to_xml(self, record, xml_id, tag=False, follow_o2m=None):
+        content = []
+        model = record._model
+
+        if model == "ir.ui.menu":
+            content.extend(self.menu_to_xml(
+                record, xml_id,
+                follow_o2m=follow_o2m))
+        else:
+            content.extend(self._render_record_template(record, model, xml_id))
+
+        return content
+
+    def _render_record_template(self, r, model, xml_id):
         deps = []
         ## XXXvlab: couldn't we remove ``model`` in favor of r._model ?
         return [(r, tmpl.render(T / "xml" / "record.xml",
-                                r=r, fields=fields,
+                                r=r, fields=self.get_fields_def_for_model(model).items(),
                                 model=model,
                                 xml_id=xml_id,
                                 xml_id_mgr=self.xml_id_mgr,
