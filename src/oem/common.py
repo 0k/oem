@@ -5,7 +5,7 @@ import os
 import traceback
 import re
 
-from kids.xml import xml2string, xmlize, load
+from kids.xml import xmlize, load
 from kids.cmd import msg
 import kids.file as kf
 
