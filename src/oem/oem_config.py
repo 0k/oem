@@ -38,7 +38,8 @@ class Command(OemCommand):
           %(std_options)s
 
         """
-        cfg = mget(self.cfg, key)
+
+        cfg = self.cfg if key is None else mget(self.cfg, key)
 
         for line in show_config(cfg, prefix=key or ""):
             print(line)
