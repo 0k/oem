@@ -122,7 +122,7 @@ class Command(common.OemCommand):
                                 xmlids.extend(common.get_refs_in_eval(e))
                             except Exception, exc:
                                 err_msg(
-                                    "WW %s: %s %s: Exception while evaluating: %r, %s"
+                                    "%s: %s %s: Exception while evaluating: %r, %s"
                                     % (xml_file, record.tag, attrib_id, e, exc.msg))
                                 continue
                         deps |= set(xmlid2tuple(xmlid, self.module_name)
@@ -135,12 +135,12 @@ class Command(common.OemCommand):
                             ## Check that we depens of this module
                             if module not in self.meta['depends']:
                                 self.meta['depends'].append(module)
-                                err_msg("WW %s: %s %s has dependence to module %s not satisfied or explicited." \
+                                err_msg("%s: %s %s has dependence to module %s not satisfied or explicited." \
                                         % (xml_file, record.tag, attrib_id, module))
                         else:
                             t = self.xmlid2tuple(xmlid)
                             if t not in res and not t[1].startswith("model_"):
-                                err_msg("WW %s: %s %s references %s.%s which is not defined (yet?)." \
+                                err_msg("%s: %s %s references %s.%s which is not defined (yet?)." \
                                         % (xml_file, record.tag, attrib_id, module, xmlid))
 
                     res[self.xmlid2tuple(attrib_id)] = {
