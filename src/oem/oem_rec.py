@@ -312,7 +312,10 @@ class Command(common.OemCommand):
         filenames = {}
         for record, xml, deps in xmls:
             records_written.append(record)
-            xmlid = self.xml_id_mgr.lookup(record)
+            module, xml_id = self.xml_id_mgr.lookup(record)
+            ## This is the real xmlid that will be written and should
+            ## be checked
+            xmlid = self.xmlid2tuple(xml_id)
             if xmlid in self.tracked_xml_ids:
                 elt = self.tracked_xml_ids[xmlid]['record_xml']
 
