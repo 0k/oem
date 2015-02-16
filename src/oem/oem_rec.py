@@ -143,6 +143,12 @@ class Command(common.OemCommand):
                                 err_msg("%s: %s %s references %s.%s which is not defined (yet?)." \
                                         % (xml_file, record.tag, attrib_id, module, xmlid))
 
+                    ## Check for duplicate xmlid:
+                    local_xml_id = self.xmlid2tuple(attrib_id)
+                    if local_xml_id in res:
+                        err_msg("%s: %s %s already defined in file %s." \
+                                % (xml_file, record.tag, attrib_id, res[local_xml_id]['filename']))
+
                     res[self.xmlid2tuple(attrib_id)] = {
                         'filename': xml_file,
                         'record_xml': record,
