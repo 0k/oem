@@ -35,6 +35,13 @@ STATUS_ADDED = object()
 STATUS_MODIFIED = object()
 
 
+DEFAULT_SPEC = {
+    '*': '*,-create_uid,-write_uid,-create_date,-write_date,-__last_update',
+    'ir.action.act_window': 'name,type,res_model,view_id,view_type,view_mode,target,usage,domain,context',
+   }
+
+
+
 def remove_tag(name, tag):
     prefix = "{%s}" % tag
     if name.startswith(prefix):
@@ -431,8 +438,9 @@ class Command(common.OemCommand):
 
         spec = copy.deepcopy(self.field_cli_specs or {})
 
-        cfg_spec = mdict.mdict(self.cfg).get("rec.import.fields", {})
-        cfg_spec = ";".join("%s:%s" % (m, fs) for m, fs in cfg_spec.dct.items())
+        cfg_spec = DEFAULT_SPEC.copy()
+        cfg_spec.update(mdict.mdict(self.cfg).get("rec.import.fields", {}))
+        cfg_spec = ";".join("%s:%s" % (m, fs) for m, fs in cfg_spec.items())
         spec.update(parse_field_specs(cfg_spec))
         return spec
 
