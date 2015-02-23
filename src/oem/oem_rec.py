@@ -603,4 +603,98 @@ class Command(common.OemCommand):
         for r, ev in events:
             ev(r)
 
+    @cmd
+    def defs(self, dbs, model):
+        """Prints and diffs model schema on given databases
 
+        Usage:
+          %(std_usage)s
+          %(surcmd)s DBS MODEL
+
+        Options:
+          %(std_options)s
+          DBS              Database identifier(s), you can provide only one
+                             or two to ask for a diff by using this syntax:
+                                DBNAME1[@HOST1[:PORT1]]..DBNAME2[@HOST2[:PORT2]]
+          MODEL            Odoo/OpenERP Model name
+
+        """
+        if ".." in dbs:
+            dbs = dbs.split("..")
+        else:
+            dbs = [dbs]
+
+        ooops = [self.ooop(db) for db in dbs]
+
+        ooop_model_name = ooop_normalize_model_name(model)
+        mgrs = [getattr(ooop, ooop_model_name, False) for ooop in ooops]
+        if any(mgr is False for mgr in mgrs):
+            for db, mgr in zip(dbs, mgrs):
+                if mgr is False:
+                    print('Error: model %r is not found in %r.' % (model, db))
+            exit(1)
+
+        all_field_defs = [mgr.fields_get() for mgr in mgrs]
+        ## Get the common max len
+        max_len_name = 1 + max([0] + [len(name)
+                                      for field_defs in all_field_defs
+                                      for name in field_defs ])
+
+        all_columns = [ooop.get_all_d("ir.model.fields",
+                                      [('model', '=', model)])
+                       for ooop in ooops]
+        for columns, field_defs in zip(all_columns, all_field_defs):
+            for k, field_def in field_defs.iteritems():
+                field_def["ttype"] = ("function(%s)" % field_def["type"]) \
+                                     if field_def.get('function', False) else field_def["type"]
+                # find column
+                for col in columns:
+                    if col["name"] == k:
+                        break
+                if col["name"] != k:
+                    field_def["nodef"] = True
+                    continue
+
+                field_def["required"] = col["required"]
+                field_def["domain"] = col["domain"]
+                field_def["readonly"] = col["readonly"]
+                field_def["size"] = col["size"]
+                field_def["translate"] = col["translate"]
+
+        if len(dbs) == 2:
+            key = lambda x: x[0]
+        else:
+            key = lambda k: (k[1]["ttype"], 0) if k[0] == "name" else (k[1]["ttype"], k[0])
+
+        outputs = [[] for _ in dbs]
+        for output, field_defs in zip(outputs, all_field_defs):
+            for name, field_def in sorted(
+                field_defs.iteritems(),
+                key=key):
+                line = ""
+                field_def["name"] = ("%%-%ds" % max_len_name) % name
+                line += ("%(name)s" % field_def)
+                if "nodef" in field_def:
+                    line += "???????????? "
+                else:
+                    line += (" ".join(["REQ" if field_def["required"] else "   ",
+                                       "RO" if field_def["readonly"] else "  ",
+                                       "T" if field_def["translate"] else " ",
+                                       ("%04d" % field_def["size"]) if field_def["size"] else "    "
+                                       ]))
+                if len(dbs) == 1 and field_def.get('function', False):
+                    ## could be a related also
+                    line += ("function(%(type)s)" % field_def)
+                else:
+                    line += ("%(type)-10s" % field_def)
+                if '2' in field_def['type']:
+                    line += (" => %(relation)s" % field_def)
+                    if "relation_fields" in field_def:
+                        line += ("(%(relation_field)s)" % field_def)
+                output.append(line)
+
+        if len(dbs) == 2:
+            print(udiff("\n".join(outputs[0]), "\n".join(outputs[1]),
+                        dbs[0], dbs[1]))
+        else:
+            print("\n".join(outputs[0]))
