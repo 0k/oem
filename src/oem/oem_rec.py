@@ -300,15 +300,7 @@ class Command(common.OemCommand):
 
     def _record_import(self, ooop_records, label, tag, follow_o2m=True):
 
-        content = []
-        for ooop_record in ooop_records:
-            print("Importing record %s,%d: %s" %
-                  (ooop_record._model, ooop_record._ref,
-                   ("(name=%r)" % ooop_record.name)
-                   if 'name' in ooop_record.fields else ''))
-
-            content += self.to_xml(
-                [ooop_record], follow_o2m=follow_o2m, tag=tag)
+        content = self.to_xml([ooop_records], follow_o2m=follow_o2m, tag=tag)
 
         ## This should be done directly in arch field in mako template
         # content = [(r, re.sub(r'\bx_([a-zA-Z_]+)\b', r'\1', c))
@@ -475,6 +467,12 @@ class Command(common.OemCommand):
                 for record in records]
         while objs:
             (r, model, identifier), objs = objs[0], objs[1:]
+
+            print("Importing record %s,%d: %s" %
+                  (model,
+                   r._ref,
+                   ("(name=%r)" % identifier) if 'name' in ooop_record.fields \
+                   else ''))
 
             exported_fields = list((k, v) for k, v in r.fields.iteritems()
                                    if k in self.get_fields_for_model(model))
