@@ -603,13 +603,4 @@ class Command(common.OemCommand):
         for r, ev in events:
             ev(r)
 
-    def __missing__(self, name):
-        return ('Command %r does not exist' % name,)
 
-    def __exit__(self, etype, _exc, _tb):
-        "Will be called automatically at the end of the intepreter loop"
-        if etype not in (None, GeneratorExit):  # success
-            import traceback
-            print(traceback.print_tb(_tb))
-            print("Failure: %s" % _exc)
-            sys.exit(1)
