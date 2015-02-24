@@ -534,8 +534,7 @@ class Command(common.OemCommand):
             ##
 
             content.extend(
-                self.record_to_xml(r, xml_id,
-                                   tag=tag, follow_o2m=follow_o2m))
+                self.record_to_xml(r, xml_id, follow_o2m=follow_o2m))
 
             if follow_o2m:
                 ## Add all the one2many:
@@ -552,8 +551,7 @@ class Command(common.OemCommand):
                                  for obj in (with_xmlids + without_xmlids)]
         return content
 
-
-    def record_to_xml(self, record, xml_id, tag=False, follow_o2m=None):
+    def record_to_xml(self, record, xml_id, follow_o2m=None):
         content = []
         model = record._model
 
