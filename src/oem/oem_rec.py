@@ -242,23 +242,21 @@ class Command(common.OemCommand):
         self.initialize(db=db, load_models=True)
 
         if not self.o.model_exists(model):
-            raise ValueError("Model %r not found." % (model,))
+            msg.die("Model %r not found." % (model,))
 
         if xmlid:
             xmlid_tuple = self.xmlid2tuple(xmlid)
             ooop_record = self.o.get_object_by_xmlid(xmlid_tuple)
             if id:
-                print("Can't use ``--xmlid`` option with ``--id`` argument !")
-                sys.exit(1)
+                msg.die("Can't use ``--xmlid`` option with ``--id`` argument !")
             if ooop_record is None:
-                print("No object found with xmlid %r in database %s. "
-                      % (self.tuple2xmlid(xmlid_tuple), db))
-                sys.exit(1)
+                msg.die("No object found with xmlid %r in database %s. "
+                        % (self.tuple2xmlid(xmlid_tuple), db))
             if model != ooop_record._model:
-                print("Object found with xmlid %r has model %s not model %s. "
-                      % (self.tuple2xmlid(xmlid_tuple),
-                         ooop_record._model, model))
-                sys.exit(1)
+                msg.die(
+                    "Object found with xmlid %r has model %s not model %s. "
+                    % (self.tuple2xmlid(xmlid_tuple),
+                       ooop_record._model, model))
             model = ooop_record._model
             id = ooop_record._ref
 
@@ -270,19 +268,18 @@ class Command(common.OemCommand):
         l = self.o.simple_filters(model, **kwargs)
 
         if len(l) == 0:
-            print("Filter %r yielded no matching "
-                  "candidate view." % build_filters(kwargs))
-            sys.exit(1)
+            msg.die("Filter %r yielded no matching "
+                    "candidate view." % build_filters(kwargs))
         if len(l) != 1:
             if not all:
                 exact_matches = [r for r in l
                                  if getattr(r, 'name', False) == name]
                 if len(exact_matches) != 1:
-                    print("View name filter %r yielded too much matching "
-                          "candidate views:\n" % build_filters(kwargs))
+                    msg.err("View name filter %r yielded too much matching "
+                            "candidate views:\n" % build_filters(kwargs))
                     for r in l:
                         print(fmt % self._record_info(r))
-                    sys.exit(1)
+                    exit(1)
 
                 l = exact_matches
 
@@ -627,7 +624,7 @@ class Command(common.OemCommand):
         if any(mgr is False for mgr in mgrs):
             for db, mgr in zip(dbs, mgrs):
                 if mgr is False:
-                    print('Error: model %r is not found in %r.' % (model, db))
+                    msg.err('model %r is not found in %r.' % (model, db))
             exit(1)
 
         all_field_defs = [mgr.fields_get() for mgr in mgrs]
