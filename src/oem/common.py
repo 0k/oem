@@ -251,6 +251,11 @@ class OemCommand(ConfigMixin, DbMixin, BaseCommand):
 
     @cache
     @property
+    def has_root(self):
+        return find_root() is not False
+
+    @cache
+    @property
     def root(self):
         root = find_root()
         if root is False:

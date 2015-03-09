@@ -69,7 +69,7 @@ def Command(path=None, template=None, flavor=None, prompt=False,
 
     """
 
-    cfg = config.get_conf()
+    cfg = config.load()
 
     path = os.getcwd() if path is None else os.path.abspath(path)
     root = common.find_root(path)

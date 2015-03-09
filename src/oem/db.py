@@ -32,7 +32,7 @@ class DbMixin(object):
         """Get global db conf from config file or create an empty one."""
 
         if "database" not in self.cfg:
-            self.cfg["database"] = {}
+            self.cfg.__cfg_global__["database"] = {}
         return self.cfg["database"]
 
     def get_db_config(self, label, force_query=False):
@@ -98,6 +98,5 @@ class DbMixin(object):
 
             if label not in self.dbs_conf or force_query is True:
                 ## Store login and password for the next time
-                self.dbs_conf[label] = db
-                self.cfg.write()
+                self.dbs_conf.__cfg_global__[label] = db
         return self._ooop[label]
