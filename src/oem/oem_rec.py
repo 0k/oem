@@ -293,7 +293,7 @@ class Command(common.OemCommand):
                         interactive="__env__" in args)
 
         if not self.o.model_exists(model):
-            msg.die("Model %r not found." % (model,))
+            raise Exception("Model %r not found." % (model,))
 
         if xmlid:
             xmlid_tuple = self.xmlid2tuple(xmlid)

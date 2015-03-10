@@ -57,7 +57,8 @@ class DbInstance(object):
                 connect_duration = time.time() - start
                 connected = True
             except socket.error as e:
-                msg.die("Connection to %r: %s." % (db["host"], e.strerror))
+                raise Exception(
+                    "Connection to %r: %s." % (db["host"], e.strerror))
             except ooop_utils.LoginFailed as e:
                 if force_query is True:
                     msg.err("Access Denied. Bad Credentials ? "
