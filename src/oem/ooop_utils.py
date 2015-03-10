@@ -191,7 +191,7 @@ class OOOPExtended(object):
 
         """
         imd = self.get_model("ir.model.data")
-        lookup = imd.filter(model=model, res_id=object_id)
+        lookup = imd.filter(model=model, res_id=int(object_id))
         if len(lookup) == 0:
             return None
         lookup = lookup[0]

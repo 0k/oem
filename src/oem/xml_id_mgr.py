@@ -42,7 +42,8 @@ class XmlIdManager(object):
                      if m == module]
         ## distant names
         ## XXXvlab: could cache these results
-        objs = self.ooop.IrModelData.filter(module=module, model=model)
+        objs = self.ooop.get_model("ir.model.data").filter(
+            module=module, model=model)
         all_names += [obj.name for obj in objs]
         all_names += self._file_xml_ids
         all_names = set(all_names)

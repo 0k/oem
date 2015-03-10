@@ -478,18 +478,21 @@ class Command(common.OemCommand):
 
     def to_xml(self, records, follow_o2m=False, tag=False):
 
-        def msg(action, xmlid, record):
+        def msg(action, xmlid, record, tags=""):
             token = aformat("..", fg="black", attrs=["bold", ])
             trunc = lambda s, l, index=-1: shorten(s, l, index=index,
                                                    token=token, token_length=2)
             color = {
                 "grab": {"fg": "cyan"},
                 "skip": {"fg": "blue"},
+                "mark": {"fg": "red"},
+                "name": {"fg": "red"},
                 }
             action_colored = aformat(action, **color[action])
-            print("  %s: %-64s     (%s,%4d)%s"
+            print("  %s: %-56s %-10s (%s,%4d)%s"
                   % (action_colored,
                      trunc(self.tuple2xmlid(xmlid), 64),
+                     tags,
                      record._model, record._ref,
                      (": %s" % r.name) if 'name' in r.fields else ''))
 
@@ -505,67 +508,72 @@ class Command(common.OemCommand):
             exported_fields = list((k, v) for k, v in r.fields.iteritems()
                                    if k in self.get_fields_for_model(model))
 
-            ## XXXvlab: Warning, nothing is done to ensure uniqueness within
-            ## the current XML. Hopefully, names will distinguish them out.
-            lookup = self.xml_id_mgr.lookup(r)
-            if lookup:
-                module, xml_id = lookup
-            else:
-                module, xml_id = self.xml_id_mgr.create(
-                    self.module_name,
-                    model, r._ref, identifier)
-                self.o.set_xml_id(model, r._ref, (module, xml_id))
-
-            if (module, xml_id) in done:
-                msg("skip", (module, xml_id), r)
-                continue
 
             ##
             ## Remove markups (tags) and set xml_id in current database
             ##
-
-            msg("grab", (module, xml_id), r)
 
             if tag and 'name' in r.fields:
                 ## change only in current lang
                 r.name = remove_tag(r.name, tag)
 
                 def _save(r):
-                    lang = self.o.context.get('lang', 'en_US')
+                    o = self.o._ooop
+                    msg("name", self.xml_id_mgr.lookup(r), r)
+                    lang = o.context.get('lang', 'en_US')
                     if lang != 'en_US':
-                        old_lang = self.o.context['lang']
-                        del self.o.context['lang']
-                        ## save only the name attribute to avoid overwriting
-                        ## other values
-                        current_name = self.o.read(r._model, r._ref,
-                                                   ['name']).get('name', None)
+                        old_lang = o.context['lang']
+                        del o.context['lang']
+                        current_name = o.read(r._model, r._ref,
+                                              ['name']).get('name', None)
                         if current_name is not None:
                             new_name = remove_tag(current_name, tag)
-                            self.o.write(r._model, [r._ref],
-                                         {'name': new_name})
-                            print("  renamed object %r in %r (new name: %r)"
-                                  % (r, 'en_US', new_name))
-                        self.o.context['lang'] = old_lang
+                            if new_name != current_name:
+                                o.write(r._model, [r._ref], {'name': new_name})
+                                print("    | rename in %r to %r"
+                                      % ('en_US', new_name))
+                        o.context['lang'] = old_lang
                     try:
-                        ## save only the name attribute to avoid overwriting
-                        ## other values
-                        self.o.write(r._model, [r._ref], {'name': r.name})
-                        print("  renamed object %r in %r (new name: %r)"
-                              % (r, lang, r.name))
+                        o.write(r._model, [r._ref], {'name': r.name})
+                        print("    | rename in %r to %r"
+                              % (lang, r.name))
                     except xmlrpclib.Fault, e:
                         if re.search("^warning -- Constraint Error.*"
                                      "Language code.*known languages",
                                      e.faultCode, re.DOTALL):
-                            pass
-                            #print("  warning: current database does not support language %r" % self.o.context['lang'])
+                            print("    ! language %r not known."
+                                  % o.context['lang'])
                         else:
                             raise
 
                 self._add_callback(r, 'write', _save)
 
+            ## XXXvlab: Warning, nothing is done to ensure uniqueness within
+            ## the current XML. Hopefully, names will distinguish them out.
+            new = False
+            lookup = self.xml_id_mgr.lookup(r)
+            if lookup:
+                module, xml_id = lookup
+            else:
+                new = True
+                module, xml_id = self.xml_id_mgr.create(
+                    self.module_name,
+                    model, r._ref, remove_tag(identifier, tag))
+
+                def _set_xmlid(r):
+                    lookup = self.xml_id_mgr.lookup(r)
+                    msg("mark", lookup, r)
+                    self.o.set_xml_id(r._model, r._ref, lookup)
+                self._add_callback(r, 'write', _set_xmlid)
+
+            if (module, xml_id) in done:
+                msg("skip", (module, xml_id), r)
+                continue
+
             ##
             ## Generate XML for a record
             ##
+            msg("grab", (module, xml_id), r, "NEW" if new else "")
 
             content.extend(
                 self.record_to_xml(r, xml_id, follow_o2m=follow_o2m))
