@@ -8,7 +8,7 @@ import socket
 from kids.cache import cache
 from kids.cmd import msg
 from kids.ansi import aformat
-from .ooop_utils import OOOPExtended, LoginFailed
+from . import ooop_utils
 
 
 _DEFAULT_NOT_SET = object()
@@ -49,7 +49,7 @@ class DbInstance(object):
             db = default_db
             try:
                 start = time.time()
-                o = OOOPExtended(
+                o = ooop_utils.OOOPExtended(
                     user=db["user"], pwd=db["password"],
                     dbname=db["dbname"],
                     uri="http://%s" % db["host"], port=int(db['port']),
@@ -58,7 +58,7 @@ class DbInstance(object):
                 connected = True
             except socket.error as e:
                 msg.die("Connection to %r: %s." % (db["host"], e.strerror))
-            except LoginFailed as e:
+            except ooop_utils.LoginFailed as e:
                 if force_query is True:
                     msg.err("Access Denied. Bad Credentials ? "
                             "Trying to relog...")
