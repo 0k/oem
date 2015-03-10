@@ -310,7 +310,7 @@ class OemCommand(DbMixin, BaseCommand):
 
     def initialize(self, db, load_models=False):
         self.db_identifier = db
-        self.o = self.ooop(db, load_models=load_models)
+        self.o = self.db[db].ooop(load_models=load_models)
 
     @cache
     @property

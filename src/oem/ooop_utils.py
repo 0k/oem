@@ -8,6 +8,9 @@ from kids.cache import cache
 
 OOOP_NAME_TAG_LIKE_EXPR = "{%s}%%"
 
+LoginFailed = ooop.LoginFailed
+
+
 ## XXXvlab: should propose a modification to OOOP code to get this
 ##  function accessible outside from an instanced object.
 def ooop_normalize_model_name(name):

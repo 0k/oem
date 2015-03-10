@@ -653,10 +653,10 @@ class Command(common.OemCommand):
 
         """
         dbs = dbs.split("..") if ".." in dbs else [dbs]
-        ooops = [self.ooop(db) for db in dbs]
+        ooops = [self.db[db].ooop(load_models=True) for db in dbs]
 
         ooop_model_name = ooop_normalize_model_name(model)
-        mgrs = [getattr(ooop, ooop_model_name, False) for ooop in ooops]
+        mgrs = [getattr(ooop._ooop, ooop_model_name, False) for ooop in ooops]
         if any(mgr is False for mgr in mgrs):
             for db, mgr in zip(dbs, mgrs):
                 if mgr is False:
