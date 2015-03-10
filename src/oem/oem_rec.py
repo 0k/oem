@@ -19,6 +19,7 @@ from kids.xml import xml2string, xmlize, load
 from kids.txt import udiff, shorten
 from kids.data import mdict
 from kids.ansi import aformat
+import kids.file as kf
 
 from .ooop_utils import build_filters, ooop_normalize_model_name, obj2dct, xmlid2tuple, tuple2xmlid
 
@@ -29,17 +30,18 @@ from . import common
 from . import metadata
 from . import tmpl
 from .field_spec import parse_field_specs, is_field_selected
+from .dispatcher import parse_dispatch_specs, BasicFileDispatcher
+
 
 STATUS_DELETED = object()
 STATUS_ADDED = object()
 STATUS_MODIFIED = object()
 
 
-DEFAULT_SPEC = {
+DEFAULT_FIELD_SPEC = {
     '*': '*,-create_uid,-write_uid,-create_date,-write_date,-__last_update',
-    'ir.action.act_window': 'name,type,res_model,view_id,view_type,view_mode,target,usage,domain,context',
+    'ir.actions.act_window': 'name,type,res_model,view_id,view_type,view_mode,target,usage,domain,context',
    }
-
 
 
 def remove_tag(name, tag):
@@ -55,6 +57,8 @@ class Command(common.OemCommand):
     You can list, import records with this command.
 
     """
+
+    DispatcherClass = BasicFileDispatcher
 
     @cache
     @property
@@ -194,15 +198,38 @@ class Command(common.OemCommand):
         dct["xml_id"] = "" if xml_id is None else self.tuple2xmlid(xml_id)
         return dct
 
+    @cache(key=lambda s: hippie_hashing(s.dispatch_cli_specs))
+    @property
+    def dispatch_specs(self):
+        """Return current dispatch specs"""
+
+        dispatch_spec = mdict.mdict(self.cfg).get(
+            "rec.import.dispatch", mdict.mdict({})).dct
+        dispatch_spec = ";".join("%s:%s" % (m, fs)
+                                 for m, fs in dispatch_spec.items())
+        spec = parse_dispatch_specs(dispatch_spec).copy()
+        spec.update(self.dispatch_cli_specs or {})
+        return spec
+
+    @cache
+    @property
+    def dispatcher(self):
+        return self.DispatcherClass(self.dispatch_specs)
+
     @cmd
     def import_(self, model, args={}, db=None,
                 name=None, since=None, tag=None,
                 fields="", xmlid=None, id=None,
-                all=None,
+                all=None, out="", prefix="",
                 label='%(_model)s_record',
                 fmt='%(id)5s %(name)-40s %(xml_id)-40s',
                 exclude_o2m=None):
         """Import records of a given model
+
+        Will import records in XML format and dispatch them in files
+        automatically, and declare new XML files in ``__openerp__.py``.
+        If XML for the same xml id is already existent it'll be replaced
+        in place in the same place it was found.
 
         Usage:
           %(std_usage)s
@@ -212,6 +239,7 @@ class Command(common.OemCommand):
               [--fields FIELDS]
               [--all | -a]
               [--exclude-o2m | -x]
+              [--out OUTFILE | -o OUTFILE] [--prefix OUTDIR]
               [--label TMPL]
               [--fmt TMPL]
 
@@ -239,6 +267,13 @@ class Command(common.OemCommand):
                              than one records is selected and ``-a`` is
                              not set.
                              (Default is '%%(id)5s %%(name)-40s %%(xml_id)-40s')
+            --out OUTFILE, -o OUTFILE
+                             Provide the output file where to write new XML
+                             records. (this tells the dispatcher where to put
+                             files.)
+            --prefix OUTDIR  Provide the output dir where to write new XML
+                             records. Prefix is always added to any path that
+                             was produced by the dispatcher.
 
         """
         self.root ## is required
@@ -300,6 +335,8 @@ class Command(common.OemCommand):
                 l = exact_matches
 
         self.field_cli_specs = parse_field_specs(fields, model)
+        self.dispatch_cli_specs = parse_dispatch_specs(out)
+        self.prefix = prefix
 
         self._record_import(l, label, tag, follow_o2m=not exclude_o2m)
 
@@ -308,8 +345,13 @@ class Command(common.OemCommand):
         model = ooop_record._model
         dct = obj2dct(ooop_record)
         dct["_model"] = model[2:] if model.startswith('x_') else model
-        f = label % dct
-        return "%s.xml" % common.file_normalize_model_name(f)
+        destination = self.dispatcher(dct)
+        if self.prefix:
+            destination = os.path.join(self.prefix, destination)
+        dirname = os.path.dirname(self.file_path(destination))
+        if not os.path.isdir(dirname):
+            kf.mkdir(dirname, recursive=True)
+        return destination
 
     def _record_import(self, ooop_records, label, tag, follow_o2m=True):
 
@@ -459,7 +501,7 @@ class Command(common.OemCommand):
 
         spec = copy.deepcopy(self.field_cli_specs or {})
 
-        cfg_spec = DEFAULT_SPEC.copy()
+        cfg_spec = DEFAULT_FIELD_SPEC.copy()
         cfg_spec.update(mdict.mdict(self.cfg).get("rec.import.fields", {}))
         cfg_spec = ";".join("%s:%s" % (m, fs) for m, fs in cfg_spec.items())
         spec.update(parse_field_specs(cfg_spec))
