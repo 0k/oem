@@ -195,7 +195,7 @@ class Command(common.OemCommand):
         return dct
 
     @cmd
-    def import_(self, db, model,
+    def import_(self, model, args={}, db=None,
                 name=None, since=None, tag=None,
                 fields="", xmlid=None, id=None,
                 all=None,
@@ -206,7 +206,7 @@ class Command(common.OemCommand):
 
         Usage:
           %(std_usage)s
-          %(surcmd)s DB MODEL [--name NAME]
+          %(surcmd)s MODEL [--db DB] [--name NAME]
               [--since SINCE] [--tag TAG]
               [--id NID] [--xmlid XMLID]
               [--fields FIELDS]
@@ -216,8 +216,10 @@ class Command(common.OemCommand):
               [--fmt TMPL]
 
         Options:
-            DB               Database identifier, either an alias or a full
+            --db DB          Database identifier, either an alias or a full
                              specifier: DBNAME[@HOST[:PORT]]
+                             You can set the default with:
+                                oem db use DEFAULT_DB
             --name NAME      Filter records by name (uses ``ilike`` operator)
             --since DATE     Filter records by date
             --tag TAG        Filter records by tag (XXX doc needed on that)
@@ -239,6 +241,16 @@ class Command(common.OemCommand):
                              (Default is '%%(id)5s %%(name)-40s %%(xml_id)-40s')
 
         """
+        if db is None:
+            db = self.cfg.get("default_db", None)
+        if db is None:
+            msg.err("No database selected.")
+            msg.info(
+                "You need to either specify the database with "
+                "--db DATABASE or declare \n"
+                "a database as the defautl one thanks to:\n\n"
+                "    oem db use DEFAULT_DB\n\n")
+            exit(1)
 
         self.initialize(db=db, load_models=True,
                         interactive="__env__" in args)
