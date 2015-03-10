@@ -115,12 +115,15 @@ def build_filters(opt_filters):
     return filters
 
 
-class OOOPExtended(ooop.OOOP):
+class OOOPExtended(object):
     """Adds some shortcuts to ooop"""
+
+    def __init__(self, *args, **kwargs):
+        self._ooop = ooop.OOOP(*args, **kwargs)
 
     def model_exists(self, model):
         """Return true if model exists in distant OOOP database"""
-        return len(self.IrModel.filter(model=model)) != 0
+        return len(self.get_model("ir.model").filter(model=model)) != 0
 
     @cache
     def get_model(self, model):
@@ -129,14 +132,14 @@ class OOOPExtended(ooop.OOOP):
         It avoids using the CamelCased ooop style of referencing models.
 
         """
-        return getattr(self, ooop_normalize_model_name(model))
+        return getattr(self._ooop, ooop_normalize_model_name(model))
 
     @cache
     def get_fields(self, model):
         """Return fields dict of current model"""
 
-        if model in self.fields.keys():
-            return self.fields[model]
+        if model in self._ooop.fields.keys():
+            return self._ooop.fields[model]
 
         odoo_fields = self.get_model(model).fields_get()
         fields = {}
@@ -146,7 +149,7 @@ class OOOPExtended(ooop.OOOP):
             field['ttype'] = field['type']
             del field['type']
             fields[field_name] = field
-        self.fields[model] = fields
+        self._ooop.fields[model] = fields
         return fields
 
     def get_object(self, model, object_id):
@@ -159,17 +162,20 @@ class OOOPExtended(ooop.OOOP):
 
     def write(self, *args, **kwargs):
         try:
-            res = ooop.OOOP.write(self, *args, **kwargs)
+            res = self._ooop.write(*args, **kwargs)
         except xmlrpclib.Fault, e:
-            raise Exception("OpenERP write error:\n" +
+            raise Exception(
+                "OpenERP write error:\n" +
                 ('\n'.join(
-                ["  | " + line for line in e.faultString.split('\n')])))
+                    ["  | " + line for line in e.faultString.split('\n')])))
+        return res
 
     def get_object_by_xmlid(self, (module, xml_id)):
         """Return OOOP Instance object using XMLid
 
         """
-        lookup = self.IrModelData.filter(module=module, name=xml_id)
+        imd = self.get_model("ir.model.data")
+        lookup = imd.filter(module=module, name=xml_id)
         if len(lookup) == 0:
             return None
         lookup = lookup[0]
@@ -184,7 +190,8 @@ class OOOPExtended(ooop.OOOP):
         Returns None, if there are no xml_id associated to this object.
 
         """
-        lookup = self.IrModelData.filter(model=model, res_id=object_id)
+        imd = self.get_model("ir.model.data")
+        lookup = imd.filter(model=model, res_id=object_id)
         if len(lookup) == 0:
             return None
         lookup = lookup[0]
@@ -192,7 +199,8 @@ class OOOPExtended(ooop.OOOP):
 
     ## XXXvlab: should be a method of an OOOP object instance
     def set_xml_id(self, model, object_id, (module, xml_id)):
-        ir_model_data = self.IrModelData.new(res_id=object_id, module=module, name=xml_id)
+        imd = self.get_model("ir.model.data")
+        ir_model_data = imd.new(res_id=object_id, module=module, name=xml_id)
         ir_model_data.model = model
         ir_model_data.save()
 
@@ -208,9 +216,11 @@ class OOOPExtended(ooop.OOOP):
         filters = build_filters(kwargs)
         return self.get_model(model).filter(**filters)
 
-    def get_all_d(self, model, domain, order=None, limit=None, offset=0, fields=[]):
-        ids = self.search(model, domain, order=order, limit=limit, offset=offset)
-        return self.read(model, ids, fields=fields)
+    def get_all_d(self, model, domain, order=None, limit=None, offset=0,
+                  fields=[]):
+        ids = self._ooop.search(model, domain, order=order,
+                                limit=limit, offset=offset)
+        return self._ooop.read(model, ids, fields=fields)
 
     def version(self):
-        return tuple(self.commonsock.version()['server_version_info'])
+        return tuple(self._ooop.commonsock.version()['server_version_info'])
