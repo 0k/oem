@@ -495,6 +495,8 @@ class Command(common.OemCommand):
         content = []
         objs = [(record, record._model, getattr(record, 'name', 'anonymous'))
                 for record in records]
+        done = []
+
         while objs:
 
             (r, model, identifier), objs = objs[0], objs[1:]
@@ -512,6 +514,10 @@ class Command(common.OemCommand):
                     self.module_name,
                     model, r._ref, identifier)
                 self.o.set_xml_id(model, r._ref, (module, xml_id))
+
+            if (module, xml_id) in done:
+                msg("skip", (module, xml_id), r)
+                continue
 
             ##
             ## Remove markups (tags) and set xml_id in current database
@@ -562,7 +568,7 @@ class Command(common.OemCommand):
 
             content.extend(
                 self.record_to_xml(r, xml_id, follow_o2m=follow_o2m))
-
+            done.append((module, xml_id))
             if follow_o2m:
                 ## Add all the one2many:
                 for f, fdef in exported_fields:
