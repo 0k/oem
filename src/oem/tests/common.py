@@ -61,8 +61,16 @@ class BaseTest(kids.sh.BaseShTest, kids.test.BaseTmpDirTest):
             'tprog': (("%s %s" % (tprog, self.COMMAND))
                       if self.COMMAND else tprog),
             'BASE_PATH': BASE_PATH,
-            'NO_GIT_CONFIG': "true"
+            'NO_GIT_CONFIG': "true",
+            'OEM_SYSTEM_CONFIG_FILENAME': self.system_filename,
+            'HOME': self.tmpdir,
         }
+
+    def setUp(self):
+        super(BaseTest, self).setUp()
+        self.system_filename = os.path.join(self.tmpdir, 'system-oem.rc')
+        self.global_filename = os.path.join(self.tmpdir, '.oem.rc')
+        self.cfg_files = [self.system_filename, self.global_filename]
 
     def test_simple_run(self):
         out, err, errlvl = self.cmd('$tprog --help')

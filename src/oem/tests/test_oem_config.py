@@ -13,21 +13,6 @@ class OemConfigTest(BaseTest):
 
     COMMAND = 'config'
 
-    @cache(key=lambda s: os.getcwd())
-    @property
-    def DEFAULT_ENV(self):
-        env = super(OemConfigTest, self).DEFAULT_ENV
-        return dct.merge(env, {
-            'OEM_SYSTEM_CONFIG_FILENAME': self.system_filename,
-            'HOME': self.tmpdir,
-        })
-
-    def setUp(self):
-        super(OemConfigTest, self).setUp()
-        self.system_filename = os.path.join(self.tmpdir, 'system-oem.rc')
-        self.global_filename = os.path.join(self.tmpdir, '.oem.rc')
-        self.cfg_files = [self.system_filename, self.global_filename]
-
     def test_get_empty(self):
         out, err, errlvl = self.cmd(
             '$tprog get')
