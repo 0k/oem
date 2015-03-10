@@ -62,7 +62,7 @@ class Command(OemCommand):
           --local     Read only from local addon config file ``.oem.rc``,
                       If no ``--local`` nor ``--global`` is provided, the
                       result comes from all files.
-                      You can't use this option if %(name)s_CONFIG_FILENAME
+                      You can't use this option if OEM_CONFIG_FILENAME
                       is defined.
           --global    Read only from global config file ``~/.oem.rc``
                       If no ``--local`` nor ``--global`` is provided, the
@@ -86,7 +86,7 @@ class Command(OemCommand):
             print(mcfg)
 
     @cmd
-    def set(self, args, key=None, value=None):
+    def set(self, key, value, args):
         """Display configuration values
 
         Usage:
@@ -109,7 +109,7 @@ class Command(OemCommand):
         mdict(cfg)[key] = value
 
     @cmd
-    def rm(self, args, key=None):
+    def rm(self, key, args):
         """Remove configuration values
 
         Usage:
