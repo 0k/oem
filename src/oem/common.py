@@ -227,7 +227,6 @@ def _new_or_update_metadata(dct):
 
 
 from .db import DbMixin
-from .config import ConfigMixin
 from kids.cmd import BaseCommand
 from kids.cache import cache
 
@@ -247,17 +246,17 @@ def find_root(path=None):
     return path
 
 
-class OemCommand(ConfigMixin, DbMixin, BaseCommand):
+class OemCommand(DbMixin, BaseCommand):
 
     @cache
     @property
-    def has_root(self):
-        return find_root() is not False
+    def local_path(self):
+        return find_root()
 
     @cache
     @property
     def root(self):
-        root = find_root()
+        root = self.local_path
         if root is False:
             print
             msg.die(

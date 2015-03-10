@@ -7,6 +7,7 @@ from collections import OrderedDict
 import sact.epoch
 from cookiecutter import main as cc
 
+import kids.cfg
 from kids.cmd import cmd, msg
 from kids.data.mdict import mdict
 from kids.vcs import GitConfig
@@ -14,7 +15,6 @@ from kids.sh import ShellError
 
 
 from . import common
-from . import config
 
 
 DEFAULT_TEMPLATE = os.environ.get("OEM_INIT_TEMPLATE",
@@ -69,7 +69,7 @@ def Command(path=None, template=None, flavor=None, prompt=False,
 
     """
 
-    cfg = config.load()
+    cfg = kids.cfg.load()
 
     path = os.getcwd() if path is None else os.path.abspath(path)
     root = common.find_root(path)
