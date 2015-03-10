@@ -57,7 +57,7 @@ class XmlIdManager(object):
             i += 1
             name = "%s_%s_r%d" % (model_normalized, seed_normalized, i)
         ## add xml_id to cache.
-        print "  generated xml_id for model: %r, id: %r => xml_id: %r" \
-              % (model, res_id, name)
+        # print "    | new xmlid for (%s, %d): %r" \
+        #       % (model, res_id, name)
         self._xml_ids[(res_id, model)] = (module, name)
         return module, name

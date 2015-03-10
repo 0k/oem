@@ -258,7 +258,6 @@ class OemCommand(DbMixin, BaseCommand):
     def root(self):
         root = self.local_path
         if root is False:
-            print
             msg.die(
                 "You must be in a openerp module... "
                 "Did you initialise your openerp module ?\n\n"
@@ -284,9 +283,9 @@ class OemCommand(DbMixin, BaseCommand):
     def put_contents(self, filename, contents):
         full_name = self.file_path(filename)
         if os.path.exists(full_name):
-            print "overwrite '%s'." % full_name
+            print "  overwrite '%s'." % filename
         else:
-            print "write '%s'." % full_name
+            print "  write %r." % filename
         if isinstance(contents, unicode):
             contents = contents.encode('utf-8')
         kf.put_contents(full_name, contents)
@@ -297,7 +296,7 @@ class OemCommand(DbMixin, BaseCommand):
             if fname in meta["data"]:
                 return
             meta["data"].append(fname)
-            print "added %r to %r" \
+            print "  added %r to %r" \
                   % (fname, os.path.basename(self.metadata_file))
 
     def file_path(self, relpath):

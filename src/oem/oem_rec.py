@@ -16,9 +16,9 @@ from kids.data.lib import half_split_on_predicate
 from kids.data.graph import reorder, cycle_exists
 from kids.cache import cache, hippie_hashing
 from kids.xml import xml2string, xmlize, load
-from kids.txt import udiff
+from kids.txt import udiff, shorten
 from kids.data import mdict
-
+from kids.ansi import aformat
 
 from .ooop_utils import build_filters, ooop_normalize_model_name, obj2dct, xmlid2tuple, tuple2xmlid
 
@@ -72,11 +72,12 @@ class Command(common.OemCommand):
             if error_status["no_error"]:
                 print("")
                 error_status["no_error"] = False
-            msg.warn(mesg)
+            print(aformat("  W ", fg="yellow") + mesg)
 
         self._tracked_files = {}
         start = time.time()
-        sys.stdout.write("Loading current module's XMLs data... ")
+        print(aformat("Loading current module's XMLs data... ",
+                      attrs=["bold", ]), end="")
         sys.stdout.flush()
         res = {}
         xml_files = self.meta.get('data', [])
@@ -88,7 +89,7 @@ class Command(common.OemCommand):
                         % xml_file)
                 continue
             if xml_file.endswith(".csv"):
-                err_msg("skipping CSV file %r." % xml_file)
+                err_msg("%s: skipping CSV file." % xml_file)
                 continue
             xml = load(self.file_path(xml_file))
             self._tracked_files[xml_file] = {
@@ -142,7 +143,7 @@ class Command(common.OemCommand):
                             ## Check that we depens of this module
                             if module not in self.meta['depends']:
                                 self.meta['depends'].append(module)
-                                err_msg("%s: %s %s has dependence to module %s not satisfied or explicited." \
+                                err_msg("%s: %s %s dependency to module %s not satisfied or explicited." \
                                         % (xml_file, record.tag, attrib_id, module))
                         else:
                             t = self.xmlid2tuple(xmlid)
@@ -167,14 +168,14 @@ class Command(common.OemCommand):
 
                     if cycle_exists(self.xmlid2tuple(attrib_id),
                                     lambda n: list(res.get(n, {'deps': []})['deps'])):
-                        err_msg("WW %s: %s %s introduce a cyclic reference."
+                        err_msg("%s: %s %s introduce a cyclic reference."
                                 % (xml_file, record.tag, attrib_id))
 
             self._tracked_files[xml_file]["deps"] = file_deps
 
         if error_status["no_error"] is False:
             print("    ...", end="")
-        print("done in %.3fs. (%d files, %d records)"
+        print(aformat("done", attrs=["bold", ]) + " in %.3fs. (%d files, %d records)"
               % (time.time() - start, len(xml_files), len(res)))
         self._tracked_xml_ids = res
         return res
@@ -297,13 +298,30 @@ class Command(common.OemCommand):
 
     def _record_import(self, ooop_records, label, tag, follow_o2m=True):
 
-        content = self.to_xml([ooop_records], follow_o2m=follow_o2m, tag=tag)
+        self.tracked_xml_ids  ## force creation of cache
 
-        ## This should be done directly in arch field in mako template
-        # content = [(r, re.sub(r'\bx_([a-zA-Z_]+)\b', r'\1', c))
-        #            for r, c in content]
+        print(aformat("Collecting records in %s" % self.db_identifier, attrs=["bold", ]))
+        content = self.to_xml(ooop_records, follow_o2m=follow_o2m, tag=tag)
+
         xmls = [(r, xmlize(c), d) for r, c, d in content]
 
+        def msg(action, xmlid, filename, record):
+            token = aformat("..", fg="black", attrs=["bold", ])
+            trunc = lambda s, l, index=-1: shorten(s, l, index=index,
+                                                   token=token, token_length=2)
+            color = {"nop": {"fg": "blue"},
+                     "new": {"fg": "green"},
+                     "chg": {"fg": "yellow"},
+                     }
+            action_colored = aformat(action, **color[action])
+            print("  %-4s: %-32s in %-32s (%s,%4d)%s"
+                  % (action_colored,
+                     trunc(self.tuple2xmlid(xmlid), 32, index=8),
+                     trunc(filename, 32, index=8),
+                     record._model, record._ref,
+                     (": %s" % r.name) if 'name' in r.fields else ''))
+
+        print(aformat("Reviewing collected records", attrs=["bold", ]))
         records_written = []
         filenames = {}
         for record, xml, deps in xmls:
@@ -317,10 +335,9 @@ class Command(common.OemCommand):
 
                 filename = self.tracked_xml_ids[xmlid]['filename']
                 if xml2string(elt) == xml2string(xml):
-                    print("  noop: %s stored in %s" % (self.tuple2xmlid(xmlid),
-                                                       filename))
+                    msg("nop", xmlid, filename, record)
                     continue
-                print("  modified: %-65r" % (self.tuple2xmlid(xmlid), ))
+                msg("chg", xmlid, filename, record)
                 if filename not in filenames:
                     filenames[filename] = \
                         self.tracked_files[filename]['xml_file_content']
@@ -332,8 +349,8 @@ class Command(common.OemCommand):
                 self.tracked_xml_ids[xmlid]['replaced'] = \
                     self.tracked_xml_ids[xmlid].get('replaced', 0) + 1
             else:
-                print("  added: %-65r" % (self.tuple2xmlid(xmlid), ))
                 filename = self._get_file_name_for_record(record, xmls, label)
+                msg("new", xmlid, filename, record)
                 if filename not in filenames:
                     filenames[filename] = \
                         self.tracked_files[filename]['xml_file_content'] \
@@ -344,9 +361,9 @@ class Command(common.OemCommand):
                 data.append(xml)
 
         if filenames:
-            print("Writing changes:")
+            print(aformat("Writing changes", attrs=["bold", ]))
         else:
-            print("No changes to write to files.")
+            print(aformat("No changes to write to files.", attrs=["bold", ]))
 
         for filename, data in filenames.iteritems():
             self.add_xml(filename, xml2string(data))
@@ -459,17 +476,28 @@ class Command(common.OemCommand):
             if k in self.get_fields_for_model(model))
 
     def to_xml(self, records, follow_o2m=False, tag=False):
+
+        def msg(action, xmlid, record):
+            token = aformat("..", fg="black", attrs=["bold", ])
+            trunc = lambda s, l, index=-1: shorten(s, l, index=index,
+                                                   token=token, token_length=2)
+            color = {
+                "grab": {"fg": "cyan"},
+                "skip": {"fg": "blue"},
+                }
+            action_colored = aformat(action, **color[action])
+            print("  %s: %-64s     (%s,%4d)%s"
+                  % (action_colored,
+                     trunc(self.tuple2xmlid(xmlid), 64),
+                     record._model, record._ref,
+                     (": %s" % r.name) if 'name' in r.fields else ''))
+
         content = []
         objs = [(record, record._model, getattr(record, 'name', 'anonymous'))
                 for record in records]
         while objs:
-            (r, model, identifier), objs = objs[0], objs[1:]
 
-            print("Importing record %s,%d: %s" %
-                  (model,
-                   r._ref,
-                   ("(name=%r)" % identifier) if 'name' in ooop_record.fields \
-                   else ''))
+            (r, model, identifier), objs = objs[0], objs[1:]
 
             exported_fields = list((k, v) for k, v in r.fields.iteritems()
                                    if k in self.get_fields_for_model(model))
@@ -488,6 +516,8 @@ class Command(common.OemCommand):
             ##
             ## Remove markups (tags) and set xml_id in current database
             ##
+
+            msg("grab", (module, xml_id), r)
 
             if tag and 'name' in r.fields:
                 ## change only in current lang
@@ -536,14 +566,18 @@ class Command(common.OemCommand):
             if follow_o2m:
                 ## Add all the one2many:
                 for f, fdef in exported_fields:
-                    if fdef['ttype'] == 'one2many' and getattr(r, f):
+                    if fdef['ttype'] != 'one2many':
+                        continue
+                    new_records = getattr(r, f)
+                    if new_records:
                         ## big mess to get the element that do not have any
                         ## xml_id to the end of a classical sort.
                         with_xmlids, without_xmlids = half_split_on_predicate(
-                            getattr(r, f),
+                            new_records,
                             lambda obj: self.xml_id_mgr.lookup(obj) is None)
                         with_xmlids.sort(key=self.xml_id_mgr.get_xml_id_sort_key)
-                        print("adding o2m descendant along %r attribute" % f)
+                        print("    + %d o2m descendant along %r attribute"
+                              % (len(new_records), f))
                         objs += [(obj, fdef['relation'], identifier)
                                  for obj in (with_xmlids + without_xmlids)]
         return content

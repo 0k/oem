@@ -6,4 +6,5 @@
 -e git+https://github.com/0k/kids.file.git#egg=kids.file
 -e git+https://github.com/0k/kids.data.git#egg=kids.data
 -e git+https://github.com/0k/kids.sh.git#egg=kids.sh
+-e git+https://github.com/0k/kids.txt.git#egg=kids.txt
 -e .

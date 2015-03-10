@@ -5,7 +5,7 @@ from lxml import etree
 <%def name="missing(fieldname, type, db, model, ids)">
   <%
       str_ids = ", ".join([str(i) for i in ids])
-      msg("WW Missing xmlid for field %r (%s to %s) for those ids: %s"
+      msg("    ! Missing xmlid for field %r (%s to %s) for those ids: %s"
           % (fieldname, type, model, str_ids))
   %>
   <!-- MISSING xml_id for field ${fieldname} (${type} to ${model}) for those ids: ${str_ids} (db: ${db_identifier}) -->
