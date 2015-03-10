@@ -241,6 +241,8 @@ class Command(common.OemCommand):
                              (Default is '%%(id)5s %%(name)-40s %%(xml_id)-40s')
 
         """
+        self.root ## is required
+
         if db is None:
             db = self.cfg.get("default_db", None)
         if db is None:
