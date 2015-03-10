@@ -123,7 +123,7 @@ class OOOPExtended(object):
 
     def model_exists(self, model):
         """Return true if model exists in distant OOOP database"""
-        return len(self.get_model("ir.model").filter(model=model)) != 0
+        return len(self._ooop.search("ir.model", [], limit=1)) != 0
 
     @cache
     def get_model(self, model):
