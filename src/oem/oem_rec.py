@@ -365,7 +365,7 @@ class Command(common.OemCommand):
         else:
             print(aformat("No changes to write to files.", attrs=["bold", ]))
 
-        for filename, data in filenames.iteritems():
+        for filename, data in filenames.items():
             self.add_xml(filename, xml2string(data))
 
         for r in records_written:
@@ -619,12 +619,12 @@ class Command(common.OemCommand):
 
         key = (r._model, r._ref)
 
-        if not key in self.cbs:
+        if key not in self.cbs:
             self.cbs[key] = {}
 
         record_events = self.cbs[key]
 
-        if not event in record_events:
+        if event not in record_events:
             record_events[event] = []
 
         record_events[event].append((r, callback))
@@ -652,11 +652,7 @@ class Command(common.OemCommand):
           MODEL            Odoo/OpenERP Model name
 
         """
-        if ".." in dbs:
-            dbs = dbs.split("..")
-        else:
-            dbs = [dbs]
-
+        dbs = dbs.split("..") if ".." in dbs else [dbs]
         ooops = [self.ooop(db) for db in dbs]
 
         ooop_model_name = ooop_normalize_model_name(model)
@@ -671,7 +667,7 @@ class Command(common.OemCommand):
         ## Get the common max len
         max_len_name = 1 + max([0] + [len(name)
                                       for field_defs in all_field_defs
-                                      for name in field_defs ])
+                                      for name in field_defs])
 
         all_columns = [ooop.get_all_d("ir.model.fields",
                                       [('model', '=', model)])
@@ -679,7 +675,8 @@ class Command(common.OemCommand):
         for columns, field_defs in zip(all_columns, all_field_defs):
             for k, field_def in field_defs.iteritems():
                 field_def["ttype"] = ("function(%s)" % field_def["type"]) \
-                                     if field_def.get('function', False) else field_def["type"]
+                                     if field_def.get('function', False) else \
+                                     field_def["type"]
                 # find column
                 for col in columns:
                     if col["name"] == k:
@@ -697,24 +694,24 @@ class Command(common.OemCommand):
         if len(dbs) == 2:
             key = lambda x: x[0]
         else:
-            key = lambda k: (k[1]["ttype"], 0) if k[0] == "name" else (k[1]["ttype"], k[0])
+            key = lambda k: (k[1]["ttype"], 0) if k[0] == "name" \
+                  else (k[1]["ttype"], k[0])
 
         outputs = [[] for _ in dbs]
         for output, field_defs in zip(outputs, all_field_defs):
-            for name, field_def in sorted(
-                field_defs.iteritems(),
-                key=key):
+            for name, field_def in sorted(field_defs.items(), key=key):
                 line = ""
                 field_def["name"] = ("%%-%ds" % max_len_name) % name
                 line += ("%(name)s" % field_def)
                 if "nodef" in field_def:
                     line += "???????????? "
                 else:
-                    line += (" ".join(["REQ" if field_def["required"] else "   ",
-                                       "RO" if field_def["readonly"] else "  ",
-                                       "T" if field_def["translate"] else " ",
-                                       ("%04d" % field_def["size"]) if field_def["size"] else "    "
-                                       ]))
+                    line += (" ".join([
+                        "REQ" if field_def["required"] else "   ",
+                        "RO" if field_def["readonly"] else "  ",
+                        "T" if field_def["translate"] else " ",
+                        ("%04d" % field_def["size"]) if field_def["size"] else "    "
+                        ]))
                 if len(dbs) == 1 and field_def.get('function', False):
                     ## could be a related also
                     line += ("function(%(type)s)" % field_def)
