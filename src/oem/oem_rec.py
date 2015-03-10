@@ -511,8 +511,9 @@ class Command(common.OemCommand):
     def get_fields_for_model(self, model):
         """Return list of fields to import"""
 
-        fields = [f for f in self.o.get_fields(model)
-                  if is_field_selected(model, f, self.field_specs)]
+        fields = [f for f, fdef in self.o.get_fields(model).items()
+                  if is_field_selected(model, f, self.field_specs)
+                  and not fdef["readonly"]]
 
         ## order
 
@@ -563,7 +564,6 @@ class Command(common.OemCommand):
 
             exported_fields = list((k, v) for k, v in r.fields.iteritems()
                                    if k in self.get_fields_for_model(model))
-
 
             ##
             ## Remove markups (tags) and set xml_id in current database
