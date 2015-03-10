@@ -308,9 +308,10 @@ class OemCommand(DbMixin, BaseCommand):
     def tuple2xmlid(self, t):
         return tuple2xmlid(t, default_module=self.module_name)
 
-    def initialize(self, db, load_models=False):
+    def initialize(self, db, load_models=False, interactive=False):
         self.db_identifier = db
-        self.o = self.db[db].ooop(load_models=load_models)
+        self.o = self.db[db].ooop(load_models=load_models,
+                                  interactive=interactive)
 
     @cache
     @property

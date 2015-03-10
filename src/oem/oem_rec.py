@@ -240,7 +240,8 @@ class Command(common.OemCommand):
 
         """
 
-        self.initialize(db=db, load_models=True)
+        self.initialize(db=db, load_models=True,
+                        interactive="__env__" in args)
 
         if not self.o.model_exists(model):
             msg.die("Model %r not found." % (model,))
@@ -653,7 +654,8 @@ class Command(common.OemCommand):
 
         """
         dbs = dbs.split("..") if ".." in dbs else [dbs]
-        ooops = [self.db[db].ooop(load_models=True) for db in dbs]
+        ooops = [self.db[db].ooop(load_models=True, interactive=True)
+                 for db in dbs]
 
         ooop_model_name = ooop_normalize_model_name(model)
         mgrs = [getattr(ooop._ooop, ooop_model_name, False) for ooop in ooops]

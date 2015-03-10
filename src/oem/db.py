@@ -31,7 +31,7 @@ class DbInstance(object):
         self.cfg = cfg
 
     @cache
-    def ooop(self, lang="fr_FR", load_models=False, save_password=True):
+    def ooop(self, lang="fr_FR", load_models=False, save_password=True, interactive=False):
         default_db = {
             "user": "admin",
             "password": "admin",
@@ -44,7 +44,7 @@ class DbInstance(object):
         force_query = False
         connected = False
         while not connected:
-            db = self.get_creds(default_db, force_query)
+            db = self.get_creds(default_db, force_query, interactive)
             default_db.update(db)
             db = default_db
             try:
@@ -94,10 +94,12 @@ class DbInstance(object):
                          self.cfg.__cfg_global__._cfg_manager._filename))
         return o
 
-    def get_creds(self, default_db, force_query=False):
+    def get_creds(self, default_db, force_query=False, interactive=False):
         conf_keys = default_db.keys()
         has_creds = "user" in conf_keys and "password" in conf_keys
         if not has_creds or force_query:
+            if not interactive:
+                raise ValueError("Missing creds in database definition.")
             print(aformat("Connecting to %s..." % self.label, fg="white", attrs=["bold", ]))
             conf = {}
             conf["user"] = raw_input(aformat("  ? ", fg="white", attrs=["bold", ]) + "Login: ")
