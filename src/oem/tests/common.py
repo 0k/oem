@@ -54,7 +54,7 @@ class BaseTest(kids.sh.BaseShTest, kids.test.BaseTmpDirTest):
 
     COMMAND = ""
 
-    @cache
+    @cache(key=lambda s: s.tmpdir)
     @property
     def DEFAULT_ENV(self):
         return {
@@ -67,7 +67,9 @@ class BaseTest(kids.sh.BaseShTest, kids.test.BaseTmpDirTest):
         }
 
     def setUp(self):
-        super(BaseTest, self).setUp()
+        kids.test.BaseTmpDirTest.setUp(self)
+        kids.sh.BaseShTest.setUp(self)
+
         self.system_filename = os.path.join(self.tmpdir, 'system-oem.rc')
         self.global_filename = os.path.join(self.tmpdir, '.oem.rc')
         self.cfg_files = [self.system_filename, self.global_filename]
