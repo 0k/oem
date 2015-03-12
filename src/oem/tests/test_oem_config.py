@@ -3,10 +3,8 @@
 import os
 import os.path
 
-from common import BaseTest
+from .common import BaseTest
 import kids.file as kf
-from kids.data import dct
-from kids.cache import cache
 
 
 class OemConfigTest(BaseTest):
@@ -306,18 +304,3 @@ class LocalPathOemConfigTest(OemConfigTest):
         self.assertFalse(kf.chk.exists(self.system_filename))
         self.assertTrue(kf.chk.exists(self.global_filename))
         self.assertTrue(kf.chk.exists(self.local_filename))
-
-
-# class ForceConfigOemConfigTest(OemConfigTest):
-
-#     @cache(key=lambda s: os.getcwd())
-#     @property
-#     def DEFAULT_ENV(self):
-#         env = super(OemConfigTest, self).DEFAULT_ENV
-#         filename = os.path.join(os.getcwd(), '.oem.rc')
-#         kf.touch(filename)
-#         return dct.merge(env, {
-#             'OEM_CONFIG_FILENAME': filename,
-#         })
-
-
