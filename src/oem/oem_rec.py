@@ -419,6 +419,9 @@ class Command(common.OemCommand):
         for r in records_written:
             self._trigger_event(r, 'write')
 
+        ## Should probably directly write in the linted form...
+        self.lint(args={"-c": True})
+
     def menu_to_xml(self, menu, xml_id, follow_o2m=False, tags=False):
         content = []
         action = None
@@ -785,3 +788,87 @@ class Command(common.OemCommand):
                         dbs[0], dbs[1]))
         else:
             print("\n".join(outputs[0]))
+
+    @cmd
+    def lint(self, args):
+        """Check and correct packages errors.
+
+        %(surcmd)r will check that your datafiles are imported in the correct
+        order, and that you didn't miss any dependency towards external packets.
+
+        Usage:
+          %(std_usage)s
+          %(surcmd)s [-c]
+
+        Options:
+          %(std_options)s
+          -c               Correct what can be corrected.
+
+        """
+
+        def msg(action, message):
+            token = aformat("..", fg="black", attrs=["bold", ])
+            trunc = lambda s, l, index=-1: shorten(s, l, index=index,
+                                                   token=token, token_length=2)
+            color = {"lint": {"fg": "red"},
+                     "info": {"fg": "white"},
+                     "warn": {"fg": "yellow"},
+                     }
+            action_colored = aformat(action, **color[action])
+            print("  %-4s: %-72s"
+                  % (action_colored, trunc(message, 72, index=-1)))
+
+        tracked_xml_ids, mapped_depends, tracked_files = self.map_data()
+
+        ## Add file level deps
+
+        for f, dct in tracked_files.iteritems():
+            dct["file_deps"] = set(tracked_xml_ids[d]["filename"]
+                                   for d in dct["deps"]
+                                   if d in tracked_xml_ids and
+                                      tracked_xml_ids[d]["filename"] != f)
+
+        ## Re-order data files ?
+
+        get_deps = lambda f: tracked_files.get(
+            f, {"deps": [], "file_deps": set()})["file_deps"]
+        orig_data = self.meta["data"]
+        new_data = reorder(orig_data[:], get_deps)
+        if orig_data != new_data:
+            if not args['-c']:
+                msg("warn", "XML data file loading order issue found.")
+                print("          use ``-c`` to correct them automatically")
+            else:
+                with self.meta as meta:
+                    meta["data"] = new_data
+                    msg("lint", "corrected order of data section.")
+
+        ## check module deps
+
+        set_meta_depends = set(self.meta["depends"])
+        ## XXXvlab: until we now how to read python, and collect python deps,
+        ## this won't work. The following code will removed unused detection
+        ## and correction.
+        # set_mapped_depends = set(mapped_depends)
+        set_mapped_depends = set(mapped_depends) | set_meta_depends
+        if set_meta_depends != set_mapped_depends:
+            missing = set_mapped_depends - set_meta_depends
+            unused = set_meta_depends - set_mapped_depends
+            if not args['-c']:
+                msg("warn", "Module depencies issues found:")
+                if missing:
+                    print("          ! missing module: %s"
+                          % (", ".join(sorted(missing))))
+                if unused:
+                    print("          ! unused module: %s"
+                          % (", ".join(sorted(unused))))
+                print("          use ``-c`` to correct automatically")
+            else:
+                with self.meta as meta:
+                    ## XXXvlab: until we now how to read python, and collect python deps,
+                    ## this won't work.
+                    meta["depends"] = sorted(set_mapped_depends)
+                    message = ",".join(["-%s" % m for m in sorted(unused)] +
+                                       ["+%s" % m for m in sorted(missing)])
+                    msg("lint", "modified depends list. (%s)" % message)
+
