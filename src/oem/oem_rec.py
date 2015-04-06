@@ -64,11 +64,11 @@ class Command(common.OemCommand):
     @property
     def xml_id_mgr(self):
         from .xml_id_mgr import XmlIdManager
-        return XmlIdManager(self.o, self.tracked_xml_ids.keys())
+        tracked_xml_ids, _, _ = self.map_data()
+        return XmlIdManager(self.o, tracked_xml_ids.keys())
 
     @cache
-    @property
-    def tracked_xml_ids(self):
+    def map_data(self):
 
         error_status = {'no_error': True}
 
@@ -78,13 +78,14 @@ class Command(common.OemCommand):
                 error_status["no_error"] = False
             print(aformat("  W ", fg="yellow") + mesg)
 
-        self._tracked_files = {}
+        tracked_files = {}
         start = time.time()
         print(aformat("Loading current module's XMLs data... ",
                       attrs=["bold", ]), end="")
         sys.stdout.flush()
         res = {}
         xml_files = self.meta.get('data', [])
+        module_dependencies = ["base", ]
 
         for xml_file in xml_files:
             if not os.path.exists(self.file_path(xml_file)):
@@ -96,7 +97,7 @@ class Command(common.OemCommand):
                 err_msg("%s: skipping CSV file." % xml_file)
                 continue
             xml = load(self.file_path(xml_file))
-            self._tracked_files[xml_file] = {
+            tracked_files[xml_file] = {
                 'xml_file_content': xml,
             }
             ## XXXvlab: will not catch complex situation
@@ -145,10 +146,8 @@ class Command(common.OemCommand):
                     for module, xmlid in deps:
                         if module != self.module_name:
                             ## Check that we depens of this module
-                            if module not in self.meta['depends']:
-                                self.meta['depends'].append(module)
-                                err_msg("%s: %s %s dependency to module %s not satisfied or explicited." \
-                                        % (xml_file, record.tag, attrib_id, module))
+                            if module not in module_dependencies:
+                                module_dependencies.append(module)
                         else:
                             t = self.xmlid2tuple(xmlid)
                             if t not in res and not t[1].startswith("model_"):
@@ -175,21 +174,13 @@ class Command(common.OemCommand):
                         err_msg("%s: %s %s introduce a cyclic reference."
                                 % (xml_file, record.tag, attrib_id))
 
-            self._tracked_files[xml_file]["deps"] = file_deps
+            tracked_files[xml_file]["deps"] = file_deps
 
         if error_status["no_error"] is False:
             print("    ...", end="")
         print(aformat("done", attrs=["bold", ]) + " in %.3fs. (%d files, %d records)"
               % (time.time() - start, len(xml_files), len(res)))
-        self._tracked_xml_ids = res
-        return res
-
-    @property
-    def tracked_files(self):
-        if hasattr(self, "_tracked_files"):
-            return self._tracked_files
-        self.tracked_xml_ids
-        return self._tracked_files
+        return res, module_dependencies, tracked_files
 
     def _record_info(self, record):
         dct = obj2dct(record)
@@ -355,7 +346,7 @@ class Command(common.OemCommand):
 
     def _record_import(self, ooop_records, label, tag, follow_o2m=True):
 
-        self.tracked_xml_ids  ## force creation of cache
+        tracked_xml_ids, _, tracked_files = self.map_data()
 
         print(aformat("Collecting records in %s" % self.db_identifier, attrs=["bold", ]))
         content = self.to_xml(ooop_records, follow_o2m=follow_o2m, tag=tag)
@@ -387,31 +378,31 @@ class Command(common.OemCommand):
             ## This is the real xmlid that will be written and should
             ## be checked
             xmlid = self.xmlid2tuple(xml_id)
-            if xmlid in self.tracked_xml_ids:
-                elt = self.tracked_xml_ids[xmlid]['record_xml']
+            if xmlid in tracked_xml_ids:
+                elt = tracked_xml_ids[xmlid]['record_xml']
 
-                filename = self.tracked_xml_ids[xmlid]['filename']
+                filename = tracked_xml_ids[xmlid]['filename']
                 if xml2string(elt) == xml2string(xml):
                     msg("nop", xmlid, filename, record)
                     continue
                 msg("chg", xmlid, filename, record)
                 if filename not in filenames:
                     filenames[filename] = \
-                        self.tracked_files[filename]['xml_file_content']
+                        tracked_files[filename]['xml_file_content']
                 ## find 'data' element (parent) of tracked xml
-                elt = self.tracked_xml_ids[xmlid]['record_xml']
+                elt = tracked_xml_ids[xmlid]['record_xml']
                 data = elt.getparent()
                 data.replace(elt, xml)
-                self.tracked_xml_ids[xmlid]['record_xml'] = xml
-                self.tracked_xml_ids[xmlid]['replaced'] = \
-                    self.tracked_xml_ids[xmlid].get('replaced', 0) + 1
+                tracked_xml_ids[xmlid]['record_xml'] = xml
+                tracked_xml_ids[xmlid]['replaced'] = \
+                    tracked_xml_ids[xmlid].get('replaced', 0) + 1
             else:
                 filename = self._get_file_name_for_record(record, xmls, label)
                 msg("new", xmlid, filename, record)
                 if filename not in filenames:
                     filenames[filename] = \
-                        self.tracked_files[filename]['xml_file_content'] \
-                        if filename in self.tracked_files else \
+                        tracked_files[filename]['xml_file_content'] \
+                        if filename in tracked_files else \
                         common._empty_data_xml()
                 ## find 'data' xml element.
                 data = filenames[filename].getchildren()[0]
