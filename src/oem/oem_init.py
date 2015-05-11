@@ -102,7 +102,7 @@ def Command(path=None, template=None, flavor=None, prompt=False,
                 "  oem init --author='Robert Dubois <robert.dubois@mail.com>'"
                 "\n\nor set a default author in your config file before "
                 "running this command:\n\n"
-                "  oem config author 'Robert Dubois <robert.dubois@mail.com>'"
+                "  oem config set author 'Robert Dubois <robert.dubois@mail.com>'"
                 "\n\nor set a default author in your git config like this:"
                 "\n\n"
                 "  git config --global user.name 'Robert Dubois'\n"
