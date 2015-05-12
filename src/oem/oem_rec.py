@@ -496,7 +496,8 @@ class Command(common.OemCommand):
         spec = copy.deepcopy(self.field_cli_specs or {})
 
         cfg_spec = DEFAULT_FIELD_SPEC.copy()
-        cfg_spec.update(mdict.mdict(self.cfg).get("rec.import.fields", {}))
+        cfg_spec.update(mdict.mdict(self.cfg).get("rec.import.fields",
+                                                  mdict.mdict({})).dct)
         cfg_spec = ";".join("%s:%s" % (m, fs) for m, fs in cfg_spec.items())
         spec.update(parse_field_specs(cfg_spec))
         return spec
