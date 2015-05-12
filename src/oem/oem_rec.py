@@ -508,7 +508,7 @@ class Command(common.OemCommand):
 
         fields = [f for f, fdef in self.o.get_fields(model).items()
                   if is_field_selected(model, f, self.field_specs)
-                  and not fdef["readonly"]]
+                  and not fdef.get("readonly", False)]
 
         ## order
 
