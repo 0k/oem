@@ -22,9 +22,9 @@
 % if url:
     "url": "${url}",
 % endif
-    "installable" : ${installable},
+    "installable": ${installable},
 % if active:
-    "active" : ${repr(active)},
+    "active": ${repr(active)},
 % endif
     "data": [
 % if data:
