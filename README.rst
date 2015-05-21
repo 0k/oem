@@ -57,6 +57,10 @@ Classical python libraries dependencies can be installed on debian-like system::
 
     apt-get update && apt-get install python-pip python-dev libxml2-dev libxslt1-dev libz1g-dev
 
+Notice that oem uses ``libxml2-utils``, so you should probably install it also::
+
+    apt-get install libxml2-utils
+
 For now, because we use specific ``cookiecutter`` and ``ooop`` versions,
 you should make sure you have the correct dependencies::
 
