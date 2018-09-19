@@ -1,6 +1,6 @@
 --index-url https://pypi.python.org/simple/
 
--e git+https://github.com/vaab/ooop.git#egg=ooop
+-e git+https://github.com/vaab/ooop.git@0.3.0#egg=ooop
 -e git+https://github.com/0k/cookiecutter.git#egg=cookiecutter
 -e git+https://github.com/0k/kids.cmd.git#egg=kids.cmd
 -e git+https://github.com/0k/kids.file.git#egg=kids.file

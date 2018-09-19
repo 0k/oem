@@ -234,9 +234,13 @@ from kids.cache import cache
 @cache(key=lambda path=None: path if path else os.getcwd())
 def find_root(path=None):
     path = path if path else os.getcwd()
-    metadata_path = os.path.join(path, "__openerp__.py")
+    metadata_paths = [
+        os.path.join(path, "__openerp__.py"),
+        os.path.join(path, "__manifest__.py")
+        ]
     prec_path = None
-    while not os.path.isfile(metadata_path) and \
+    while not any(os.path.isfile(metadata_path)
+                 for metadata_path in metadata_paths) and \
               path != prec_path:
         prec_path = path
         path = os.path.dirname(path)
@@ -259,16 +263,19 @@ class OemCommand(DbMixin, BaseCommand):
         root = self.local_path
         if root is False:
             msg.die(
-                "You must be in a openerp module... "
-                "Did you initialise your openerp module ?\n\n"
+                "You must be in a odoo/openerp module... "
+                "Did you initialise your odoo/openerp module ?\n\n"
                 "    oem init  # initialise the current working "
-                "directory as a openerp module.\n")
+                "directory as a odoo/openerp module.\n")
         return root
 
     @cache
     @property
     def metadata_file(self):
-        return os.path.join(self.root, "__openerp__.py")
+        if (9, None, None, None, None, None) < self.o.version():
+            return os.path.join(self.root, "__manifest__.py")
+        else:
+            return os.path.join(self.root, "__openerp__.py")
 
     @cache
     @property
