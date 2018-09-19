@@ -10,7 +10,7 @@ from cookiecutter import main as cc
 import kids.cfg
 from kids.cmd import cmd, msg
 from kids.data.mdict import mdict
-from kids.vcs import GitConfig
+from kids.vcs.git import GitConfig
 from kids.sh import ShellError
 
 

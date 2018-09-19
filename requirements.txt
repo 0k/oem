@@ -7,4 +7,5 @@
 -e git+https://github.com/0k/kids.data.git#egg=kids.data
 -e git+https://github.com/0k/kids.sh.git#egg=kids.sh
 -e git+https://github.com/0k/kids.txt.git#egg=kids.txt
+-e git+https://github.com/0k/kids.vcs.git@0.0.2#egg=kids.vcs
 -e .
