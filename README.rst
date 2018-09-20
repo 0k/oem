@@ -14,8 +14,8 @@ oem
    :target: https://travis-ci.org/0k/oem/
    :alt: Travis CI build status
 
-.. image:: http://img.shields.io/coveralls/0k/oem/master.svg?style=flat
-   :target: https://coveralls.io/r/0k/oem
+.. image:: http://img.shields.io/codecov/c/github/0k/oem.svg?style=flat
+   :target: https://codecov.io/gh/0k/oem/
    :alt: Test coverage
 
 
