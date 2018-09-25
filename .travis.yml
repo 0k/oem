@@ -2,27 +2,77 @@ language: python
 python:
   - "2.7"
 install:
-  - easy_install --version
-  - pip install setuptools==9.1   ## version 10 introduce a bug with d2to1
-  - pip install pip==1.5.6  ## some ``python setup.py`` black magic do not work with d2to1 and pip ``6.0.7``
-  - pip install coverage
-  ## this would override some version taken in requirement for some reasons.
-  - python setup.py develop easy_install "$(./autogen.sh --get-name)[test]"  ## getting deps
-  - pip install -r requirements.txt
+  - if [ -e requirements.txt ]; then pip install -r requirements.txt; fi
+  - if [ -z "$DOVIS" -o "$PKG_COVERAGE" ]; then pip install coverage; fi
+  ## getting test deps
+  - python setup.py develop easy_install "$(./autogen.sh --get-name)[test]"
 
 script:
+  - nosetests -sx $(if [ -z "$DOVIS" -o "$PKG_COVERAGE" ]; then echo "--with-coverage"; fi) .
+after_success:
+  - "bash <(curl -s https://codecov.io/bash)  #dovis: ignore"
+  - |
+    if [ "$DOVIS" -a -d "$ARTIFACT_DIR" ]; then
+        cp ".coverage" "$ARTIFACT_DIR"
+        echo "$PWD" > "$ARTIFACT_DIR/cover_path"
+    fi
 
-  - nosetests . && coveralls
+## Ignored by Travis, but used internally to check packaging
+dist_check:
+  options:
+    exclude:
+      - ["v:3.6", "pkg:old"]  ## old version is breaking python 3.6 pkg_resources
+  tests:
+  - label: install
+    matrix:
+      'yes':
+        - label: venv
+          matrix:
+            'on': |
+              pip install virtualenv
+              virtualenv /tmp/virtualenv
+              . /tmp/virtualenv/bin/activate
+            'off': |
+              true
+        - label: pkg
+          matrix:
+            old: |
+              ## version 10 introduce a bug with d2to1
+              pip install setuptools==9.1
+              ## some ``python setup.py`` black magic do not work with d2to1 and pip ``6.0.7``
+              pip install pip==1.5.6
+            docker: |
+              ## Using the versions of python docker images
+              true
+            latest: |
+              ## Using the last version of pip and setuptools
+              pip install pip --upgrade
+              pip install setuptools --upgrade
+        - label: method
+          matrix:
+            setup: python setup.py install
+            pip+git: pip install "git+file://$PWD"
+            dist:
+              dist_files:
+                pip install "$DIST_FILE"
+        - |
+          pip show -f  $(./autogen.sh --get-name)
+          pip list
+      'no':
+      - |
+        export PYTHONPATH=/tmp/lib
+        mkdir /tmp/lib
+        ln -sf $PWD/$(./autogen.sh --get-name).py /tmp/lib/
+        touch /tmp/not-installed
 
-  - ## checking that we can actually create a dist THEN install this package as tar.gz, use and uninstall
-  - git reset --hard HEAD ; git clean -d -f ; python setup.py sdist --formats=gztar
-  - pip install "dist/$(./autogen.sh --get-name)-$(./autogen.sh --get-version | tr "_" "-").tar.gz"
-  - python -c "import $(./autogen.sh --get-name)" && pip uninstall -y "$(./autogen.sh --get-name)"
-
-  - ## checking that we can install from source, use and uninstall
-  - python setup.py install
-  - python -c "import $(./autogen.sh --get-name)" && pip uninstall -y "$(./autogen.sh --get-name)"
-
-  - ## checking pip installability, use and uninstall
-  - git reset --hard HEAD ; git clean -d -f ; git fetch --unshallow ; pip install git+file://$PWD
-  - python -c "import $(./autogen.sh --get-name)" && pip uninstall -y "$(./autogen.sh --get-name)"
+  - |
+    name=$(./autogen.sh --get-name)
+    cd /tmp
+    python -c "import $name"
+  - |
+    [ -e /tmp/not-installed ] || {
+        cd "$OLDPWD" &&
+        pip uninstall -y $(./autogen.sh --get-name) &&
+        cd /tmp &&
+        ! python -c "import $name"
+    }
