@@ -60,9 +60,12 @@ dist_check:
           pip list
       'no':
       - |
+        pip install configparser
+        pip install $(python -c "import configparser; config = configparser.ConfigParser(); config.read('setup.cfg'); print config['metadata']['requires-dist']")
         export PYTHONPATH=/tmp/lib
         mkdir /tmp/lib
-        ln -sf $PWD/$(./autogen.sh --get-name).py /tmp/lib/
+        name=$(./autogen.sh --get-name)
+        ln -sf $PWD/src/$name /tmp/lib/
         touch /tmp/not-installed
 
   - |
