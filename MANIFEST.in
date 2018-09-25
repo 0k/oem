@@ -1,3 +1,2 @@
-include *.rst
-recursive-include src *.py
+include *.rst LICENSE
 recursive-include src/oem/templates *
