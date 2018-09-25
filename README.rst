@@ -6,10 +6,6 @@ oem
    :target: https://pypi.python.org/pypi/oem/
    :alt: Latest PyPI version
 
-.. image:: http://img.shields.io/pypi/dm/oem.svg?style=flat
-   :target: https://pypi.python.org/pypi/oem/
-   :alt: Number of PyPI downloads
-
 .. image:: http://img.shields.io/travis/0k/oem/master.svg?style=flat
    :target: https://travis-ci.org/0k/oem/
    :alt: Travis CI build status
