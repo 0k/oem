@@ -1,0 +1,134 @@
+#!/bin/bash
+
+MANIFESTS=("__openerp__.py" "__manifest__.py")
+VARS=(OEM_DEBUG OEM_CONFIG_FILENAME GIT_CONFIG_NOSYSTEM)
+
+docker_run_opts=()
+args=("$@")
+
+## deal with possible environment
+for var in "${VARS[@]}"; do
+    [ ${!var+x} ] || continue
+    case "$var" in
+        OEM_CONFIG_FILENAME)
+            if [ -e "${!var}" ]; then
+                docker_run_opts+=(-v "${!var}:/tmp/config" -e "${var}=/tmp/config")
+            else
+                docker_run_opts+=(-e "${var}=${!var}")
+            fi
+            ;;
+        *)
+            docker_run_opts+=(-e "${var}=${!var}")
+            ;;
+    esac
+done
+
+
+
+## deal with working dir
+if [ "$1" != "init" ] && parent=$(while true; do
+                                      for manifest_file in "${MANIFESTS[@]}"; do
+                                          [ -e "./${manifest_file}" ] && {
+                                              echo "$PWD"
+                                              exit 0
+                                          }
+                                      done
+                                      [ "$PWD" == "/" ] && exit 1
+                                      cd ..
+                                  done
+                               ); then
+    docker_path=/tmp/root/$(basename "$parent")
+    docker_run_opts+=("-v" "$parent:$docker_path:rw" \
+                     "-w" "$docker_path")
+else
+    path=""
+    new_args=("${args[0]}")
+    for arg in "${args[@]:1}"; do
+        if [ "$path" ]; then
+            new_args+=("$arg")
+            continue
+        fi
+        case "$arg" in
+            -*)
+                new_args+=("$arg")
+                ;;
+            *)
+                path="$arg"
+                path="$(realpath $path)"
+                docker_path="/tmp/workdir/$(basename $path)"
+                docker_run_opts+=("-v" "$path:$docker_path:rw" -w "/tmp/workdir")
+                new_args+=("$docker_path")
+                ;;
+        esac
+    done
+    args=("${new_args[@]}")
+    if [ -z "$path" ]; then
+        path="."
+        path="$(realpath $path)"
+        docker_path="/tmp/workdir/$(basename $path)"
+        docker_run_opts+=("-v" "$path:$docker_path:rw" -w "$docker_path")
+    fi
+fi
+
+case "${args[0]} ${args[1]}" in
+    "db use")      ## default is global
+        default_conf=global
+    ;;
+    "config set")  ## default is local
+        if [ "$parent" ]; then
+            default_conf=local
+        else
+            default_conf=global
+        fi
+esac
+
+if [ "$default_conf" ]; then
+    for arg in "${args[@]:2}"; do
+        case "$arg" in
+            "--local"|"--global")
+                default_conf=${arg:2}
+                ;;
+        esac
+    done
+fi
+
+## deal with config files
+if [ -z "${OEM_CONFIG_FILENAME+x}" ] &&
+       { [ -e "$HOME/.oem.rc" -o \
+              "$default_conf" == global -a \
+              \! -e "$HOME/.oem.rc" ]; }; then
+    ## OEM_CONFIG_FILENAME not specified
+    ## file is either existing, or file is not existent and will be created
+    touch "$HOME/.oem.rc"
+    docker_run_opts+=(-v "$HOME/.oem.rc:/root/.oem.rc")
+fi
+
+## deal with git config files
+if [ -e "/etc/config" ]; then
+    docker_run_opts+=("-v" "/etc/config:/etc/config:rw")
+fi
+
+if [ "$XDG_CONFIG_HOME" ]; then
+    user_git_config="$XDG_CONFIG_HOME/git/config"
+else
+    user_git_config=$HOME/.config/git/config
+fi
+
+if [ "$GIT_CONFIG" ]; then
+    docker_run_opts+=("-v" "$GIT_CONFIG:/tmp/gitconfig:rw" -e "GIT_CONFIG=/tmp/gitconfig")
+fi
+
+if [ -e "$user_git_config" ]; then
+    docker_run_opts+=("-v" "$user_git_config:/root/.config/git/config:rw")
+fi
+
+if [ -e "$HOME/.gitconfig" ]; then
+    docker_run_opts+=("-v" "$HOME/.gitconfig:/root/.gitconfig:rw")
+fi
+
+if [ -e "$HOME/.docker-oem.rc" ]; then
+    . "$HOME/.docker-oem.rc"
+fi
+
+echo RUNNING: docker run -ti "${docker_run_opts[@]}" docker.0k.io/oem oem "${args[@]}"
+docker run -ti "${docker_run_opts[@]}" docker.0k.io/oem oem "${args[@]}"
